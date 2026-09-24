@@ -254,5 +254,3 @@ def get_gps_data(data):
     gps['Loc']['Bearing'] = bearing
 
     return gps
-
-

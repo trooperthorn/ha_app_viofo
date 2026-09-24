@@ -36,6 +36,9 @@ Browser verification in the Codex browser:
 - A generated four-second MP4 was imported through the actual file chooser and analyzed to a four-second duration.
 - Review interface displayed playback, speed, zoom, screenshot, route and telemetry controls.
 - Screenshot initiated through the UI completed and exposed a download link in Activity.
+- Actual browser playback reached readyState 4 with advancing playback time and no media error.
+- A one-second trim with a three-second title was queued from the editor UI and completed with a downloadable result.
+- The final map-enabled review page produced no browser console errors.
 - No actual VIOFO recording or real GPS route was used in browser verification.
 
 ## Not established by those results
