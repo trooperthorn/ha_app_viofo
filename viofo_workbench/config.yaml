@@ -1,0 +1,35 @@
+name: VIOFO Workbench
+version: 0.1.0
+slug: viofo_workbench
+description: Local dashcam library, camera controls, editing, and diagnostics
+arch: [amd64, aarch64]
+startup: application
+boot: auto
+init: false
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:car-camera
+panel_title: VIOFO
+map:
+  - type: media
+    read_only: false
+options:
+  log_level: debug
+  storage_path: /media/viofo
+  max_storage_gb: 100
+  retention_days: 30
+  retention_enabled: false
+  sync_interval_seconds: 300
+  api_token: ""
+schema:
+  log_level: list(debug|info|warning|error)
+  storage_path: str
+  max_storage_gb: int(1,100000)
+  retention_days: int(1,3650)
+  retention_enabled: bool
+  sync_interval_seconds: int(30,86400)
+  api_token: password
+ports:
+  8100/tcp: null
+ports_description:
+  8100/tcp: Optional token-authenticated companion integration API; leave unpublished on HA OS

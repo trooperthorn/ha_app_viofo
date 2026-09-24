@@ -1,0 +1,11 @@
+{
+  "domain": "viofo_workbench",
+  "name": "VIOFO Workbench",
+  "version": "0.1.0",
+  "config_flow": true,
+  "documentation": "https://www.home-assistant.io/integrations/",
+  "codeowners": [],
+  "iot_class": "local_polling",
+  "integration_type": "hub",
+  "requirements": []
+}

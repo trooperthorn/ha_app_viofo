@@ -1,0 +1,43 @@
+test_invalid_export_preserves_original (test_workbench.MediaTests.test_invalid_export_preserves_original) ... 2026-09-23 23:50:39,585 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+2026-09-23 23:50:39,747 DEBUG job_queued job=2c4b56d68f93b401 kind=export
+ok
+test_snapshot_and_multisegment_export_with_title (test_workbench.MediaTests.test_snapshot_and_multisegment_export_with_title) ... 2026-09-23 23:50:39,832 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+2026-09-23 23:50:40,057 DEBUG job_queued job=1a676324b2d06891 kind=export
+ok
+test_three_camera_grid (test_workbench.MediaTests.test_three_camera_grid) ... 2026-09-23 23:50:43,208 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+2026-09-23 23:50:43,371 DEBUG job_queued job=23dc1f00900da60f kind=export
+ok
+test_current_state_and_ambiguous_options (test_workbench.ProtocolTests.test_current_state_and_ambiguous_options) ... ok
+test_file_paths_and_xml (test_workbench.ProtocolTests.test_file_paths_and_xml) ... ok
+test_gps_synthetic_atom (test_workbench.ProtocolTests.test_gps_synthetic_atom) ... ok
+test_private_camera_addresses_only (test_workbench.ProtocolTests.test_private_camera_addresses_only) ... ok
+test_diagnostics_redaction (test_workbench.WebTests.test_diagnostics_redaction) ... 2026-09-23 23:50:43,895 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+<frozen _collections_abc>:983: NotAppKeyWarning: It is recommended to use web.AppKey instances for keys.
+https://docs.aiohttp.org/en/stable/web_advanced.html#application-s-config
+<workspace>\viofo_workbench\app\server.py:467: NotAppKeyWarning: It is recommended to use web.AppKey instances for keys.
+https://docs.aiohttp.org/en/stable/web_advanced.html#application-s-config
+  app["camera"] = app.get("shared_camera") or CameraClient(state, session)
+2026-09-23 23:50:43,921 DEBUG token=[REDACTED] camera=[IP] password=[REDACTED]
+ok
+test_ingress_rejects_direct_and_spoofed_requests (test_workbench.WebTests.test_ingress_rejects_direct_and_spoofed_requests) ... 2026-09-23 23:50:43,987 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+ok
+test_job_control_and_persistence (test_workbench.WebTests.test_job_control_and_persistence) ... 2026-09-23 23:50:44,066 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+2026-09-23 23:50:44,090 DEBUG job_queued job=15a0f87fb519b819 kind=snapshot
+ok
+test_protected_delete_and_range (test_workbench.WebTests.test_protected_delete_and_range) ... 2026-09-23 23:50:44,192 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+2026-09-23 23:50:44,226 WARNING request_failed request=c02cffb7 reason=Unprotect the local recording first
+ok
+test_settings_write_requires_readback (test_workbench.WebTests.test_settings_write_requires_readback) ... 2026-09-23 23:50:44,313 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+2026-09-23 23:50:44,741 INFO camera_write_verified camera=mini2 command=2001
+ok
+test_status_and_csrf (test_workbench.WebTests.test_status_and_csrf) ... 2026-09-23 23:50:44,783 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+ok
+test_token_api (test_workbench.WebTests.test_token_api) ... 2026-09-23 23:50:44,898 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+ok
+test_truncated_download_is_not_committed (test_workbench.WebTests.test_truncated_download_is_not_committed) ... 2026-09-23 23:50:44,994 INFO startup version=0.1.0 debug=debug hardware_validation=pending
+ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 6.528s
+
+OK
