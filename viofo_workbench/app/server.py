@@ -20,7 +20,8 @@ import aiohttp
 from aiohttp import web
 from . import VERSION
 from .core import State, atomic_json
-from .camera import CameraClient
+from .camera import CameraClient, recording_time, within_dates
+from urllib.parse import quote
 from . import media
 
 STATIC = Path(__file__).parent / "static"
@@ -77,7 +78,12 @@ def public_status(state):
         stats = dict(download_progress=round(max(running, default=0)*100,1), queued_downloads=sum(j["state"] in ("queued","running","paused") for j in camera_jobs), recordings=state.rows("SELECT count(*) AS n FROM clips WHERE camera=?", (c["id"],))[0]["n"])
         cameras.append(c | {"observation": obs | {"stale": age > 600}, "configured": bool(c["address"]), "stats":stats})
     clips = state.rows("SELECT count(*) AS count, coalesce(sum(size),0) AS bytes FROM clips")[0]
-    jobs = state.rows("SELECT id,kind,state,progress,created,updated,error,result,priority FROM jobs ORDER BY priority DESC, created DESC LIMIT 200")
+    jobs = state.rows("SELECT id,kind,state,progress,created,updated,error,result,priority,payload FROM jobs ORDER BY priority DESC, created DESC LIMIT 200")
+    for job in jobs:
+        record = json.loads(job.pop("payload")).get("record", {})
+        job["recording_name"] = record.get("name", "")
+        job["recorded_at"] = recording_time(record.get("name", ""), record.get("timestamp", ""))
+        job["transfer_bytes"] = record.get("size", 0)
     return dict(version=VERSION, cameras=cameras, library=clips, jobs=jobs,
                 media_tools=dict(ffmpeg=bool(shutil.which(media.FFMPEG)), ffprobe=bool(shutil.which(media.FFPROBE)), exiftool=bool(shutil.which(media.EXIFTOOL))),
                 options={k:v for k,v in state.options.items() if k != "api_token"}, uptime=time.time()-state.started)
@@ -108,6 +114,10 @@ async def camera_action(request):
         body = await request.json()
         return web.json_response(await client.write(cid, int(body["command"]), int(body["value"])))
     if action == "sync":
+        config = state.camera(cid)
+        start, end = config.get("sync_start", ""), config.get("sync_end", "")
+        if not start or not end:
+            raise ValueError("Save a recording date range in camera settings before automatic sync")
         files = await client.listing(cid)
         # Never enqueue the newest clip of any channel while the camera may be recording.
         newest = {}
@@ -117,7 +127,7 @@ async def camera_action(request):
             if key not in newest or f["name"] > newest[key]:
                 newest[key] = f["name"]
         known = {r["name"] for r in state.rows("SELECT name FROM clips WHERE camera=?", (cid,))}
-        ids = [state.add_job("download", {"camera":cid, "record":f}) for f in files if f["name"] not in known and f["name"] not in newest.values()]
+        ids = [state.add_job("download", {"camera":cid, "record":f}) for f in files if f["name"] not in known and f["name"] not in newest.values() and within_dates(f, start, end)]
         return web.json_response({"queued":ids, "deferred_newest":list(newest.values())})
     if action == "download":
         body = await request.json()
@@ -134,6 +144,7 @@ async def library(request):
     clips = request.app["state"].rows("SELECT id,camera,name,category,channel,group_key,size,created,protected,sha256,metadata FROM clips ORDER BY name DESC LIMIT 10000")
     for c in clips:
         c["metadata"] = json.loads(c["metadata"])
+        c["recorded_at"] = recording_time(c["name"])
     return web.json_response(clips)
 
 
@@ -181,7 +192,7 @@ async def clip_action(request):
     if action not in allowed or request.method not in allowed[action]:
         raise web.HTTPMethodNotAllowed(request.method, allowed.get(action, set()))
     if action in ("media", "download"):
-        headers = {"Content-Disposition": "attachment; filename=recording" + path.suffix} if action == "download" else {}
+        headers = {"Content-Disposition": "attachment; filename*=UTF-8''" + quote(clip["name"].replace("\\", "/").split("/")[-1], safe="")} if action == "download" else {}
         return web.FileResponse(path, headers=headers)
     if action == "protect":
         data = await request.json()
@@ -240,6 +251,19 @@ async def export(request):
         filename = re.sub(r"[^A-Za-z0-9_. -]", "_", str(body["filename"]))[:100].strip(" .")
         body["filename"] = (filename.removesuffix(".mp4") or "edited-recording") + ".mp4"
     return web.json_response({"job":request.app["state"].add_job("export", body)})
+
+
+async def pause_downloads(request):
+    state = request.app["state"]
+    for c in state.cameras:
+        state.save_camera(c["id"], {"auto_sync": False})
+    jobs = state.rows("SELECT id FROM jobs WHERE kind='download' AND state IN ('queued','running')")
+    for job in jobs:
+        state.update_job(job["id"], state="paused")
+        task = request.app["running"].get(job["id"])
+        if task:
+            task.cancel()
+    return web.json_response({"paused": len(jobs)})
 
 
 async def job_action(request):
@@ -466,7 +490,7 @@ async def scheduler(app):
     while True:
         state = app["state"]
         for c in state.cameras:
-            if not c["auto_sync"] or not c["address"]:
+            if not c["auto_sync"] or not c["address"] or not c.get("sync_start") or not c.get("sync_end"):
                 continue
             try:
                 await app["camera"].inspect(c["id"])
@@ -478,7 +502,7 @@ async def scheduler(app):
                     key = key[1] if key else "F"
                     newest[key] = max(newest.get(key,""), f["name"])
                 for f in files:
-                    if f["name"] not in known and f["name"] not in newest.values():
+                    if f["name"] not in known and f["name"] not in newest.values() and within_dates(f, c["sync_start"], c["sync_end"]):
                         state.add_job("download", {"camera":c["id"], "record":f})
             except Exception as exc:
                 state.log.debug("auto_sync_unavailable camera=%s reason=%s", c["id"], type(exc).__name__)
@@ -528,6 +552,7 @@ def create_app(state, integration=False, background=True):
         app.router.add_post("/api/exports", export)
         app.router.add_post("/api/jobs/{jid}", job_action)
         app.router.add_get("/api/exports/{jid}", exported)
+        app.router.add_post("/api/downloads/pause", pause_downloads)
         app.router.add_get("/api/live/{cid}", live)
         app.router.add_get("/api/diagnostics", diagnostics)
         app.router.add_put("/api/preferences", preferences)

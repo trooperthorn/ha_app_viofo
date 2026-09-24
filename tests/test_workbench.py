@@ -15,12 +15,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "viofo_workbench"))
 from aiohttp import web, FormData
 from aiohttp.test_utils import TestClient, TestServer
 from app.core import State, local_address
-from app.camera import CameraClient, parse_listing, remote_path, states, settings_for
+from app.camera import recording_time, within_dates, CameraClient, parse_listing, remote_path, states, settings_for
 from app.server import create_app, execute_job
 from app import media
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_recording_dates(self):
+        self.assertEqual(recording_time('2025_0621_192620_001F.MP4'), '2025-06-21T19:26:20')
+        self.assertEqual(recording_time('recording (3).mp4'), '')
+        self.assertEqual(recording_time('unknown.mp4','2025/06/21 19:26:20'), '2025-06-21T19:26:20')
+        self.assertTrue(within_dates({'name':'2025_0621_192620_F.MP4'},'2025-06-21','2025-06-21'))
+        self.assertFalse(within_dates({'name':'2025_0622_192620_F.MP4'},'2025-06-21','2025-06-21'))
+        with self.assertRaises(ValueError):
+            within_dates({'name':'unknown'},'2025-06-22','2025-06-21')
+
     def test_embedded_sensor_rows(self):
         points = media.parse_accelerometer('0,0.1 0.2 0.3\n1,0.2 -1 0\n2,nan 0 0\nnot a sample\n-1,0 0 1')
         self.assertEqual(len(points),2)
@@ -64,6 +73,20 @@ class ProtocolTests(unittest.TestCase):
 
 
 class WebTests(unittest.IsolatedAsyncioTestCase):
+    async def test_original_name_and_bulk_pause(self):
+        from urllib.parse import unquote
+        path=self.state.storage/'recordings'/'internal.mp4';path.write_bytes(b'original')
+        name='2025_0621_192620_001F.MP4'
+        cid=self.state.register(path,'a229pro',name)
+        response=await self.client.get(f'/api/clips/{cid}/download')
+        self.assertIn(name,unquote(response.headers['Content-Disposition']))
+        self.assertEqual(await response.read(),b'original')
+        jid=self.state.add_job('download',{'camera':'a229pro','record':{'name':name}})
+        response=await self.client.post('/api/downloads/pause',json={},headers={'X-Viofo-Request':'1'})
+        self.assertEqual(response.status,200)
+        self.assertEqual(self.state.job(jid)['state'],'paused')
+        self.assertFalse(self.state.camera('a229pro')['auto_sync'])
+
     async def test_live_failure_preserves_error_and_releases_slot(self):
         self.state.camera('a229pro')['address'] = 'http://192.168.1.20'
         class Process:

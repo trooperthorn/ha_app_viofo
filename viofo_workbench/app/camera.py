@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from html.parser import HTMLParser
 import json
 from pathlib import Path, PurePosixPath
@@ -31,10 +32,35 @@ def remote_path(raw):
     return str(p)
 
 
+def recording_time(name, stamp=""):
+    """Camera-local wall time, without assuming a timezone or using import time."""
+    match = re.search(r"(20\d{2})[_-]?(\d{2})(\d{2})[_-](\d{2})(\d{2})(\d{2})", name)
+    if match:
+        try:
+            return datetime(*map(int, match.groups())).isoformat()
+        except ValueError:
+            pass
+    for fmt in ("%Y/%m/%d %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(stamp, fmt).isoformat()
+        except ValueError:
+            pass
+    return ""
+
+
+def within_dates(record, start, end):
+    for value in (start, end):
+        datetime.strptime(value, "%Y-%m-%d")
+    if start > end:
+        raise ValueError("Start date must not follow end date")
+    day = recording_time(record["name"], record.get("timestamp", ""))[:10]
+    return bool(day and start <= day <= end)
+
+
 def file_record(path, size=0, stamp="", locked=False):
     path = remote_path(path)
     upper = path.upper()
-    return dict(path=path, name=PurePosixPath(path).name, size=int(size), timestamp=stamp,
+    return dict(path=path, name=PurePosixPath(path).name, size=int(size), timestamp=stamp, recorded_at=recording_time(PurePosixPath(path).name, stamp),
                 category="locked" if locked or "/RO/" in upper else "parking" if "/PARKING/" in upper else "driving")
 
 

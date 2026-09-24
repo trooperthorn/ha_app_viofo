@@ -120,6 +120,15 @@ class State:
         channels = data.get("channels", old["channels"])
         if channels not in ("F", "FR", "FI", "FRI"):
             raise ValueError("Invalid camera channels")
+        from datetime import datetime
+        start = str(data.get("sync_start", old.get("sync_start", "")))
+        end = str(data.get("sync_end", old.get("sync_end", "")))
+        if start or end:
+            datetime.strptime(start, "%Y-%m-%d")
+            datetime.strptime(end, "%Y-%m-%d")
+            if start > end:
+                raise ValueError("Start date must not follow end date")
+        old.update(sync_start=start, sync_end=end)
         old.update(name=str(data.get("name", old["name"]))[:80], model=model,
                    address=local_address(address) if address else "", channels=channels,
                    auto_sync=bool(data.get("auto_sync", old["auto_sync"])), writes=bool(data.get("writes", old["writes"])))
