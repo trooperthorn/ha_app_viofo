@@ -1,3 +1,10 @@
+# 0.1.4
+
+- Skip saved camera/name/size matches when the local file still exists at the expected size; reuse pending camera/path/size transfers even if listing metadata changes. Recheck before transfer to avoid duplicates in old queues. Remote content hashes are not available, so this is not a remote byte-for-byte comparison.
+
+- Cancel all pending transfers across the full queue, including active downloads and import analysis. Keep saved recordings.
+- Select multiple pending jobs and cancel together; selection survives refresh. Disable automatic sync on bulk cancellation.
+
 # 0.1.3
 
 - Preserve original download filenames.

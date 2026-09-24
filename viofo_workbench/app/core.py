@@ -159,7 +159,22 @@ class State:
                      (cid, camera, name, category, channel, group, str(path), path.stat().st_size, time.time(), int(category == "locked"), digest, json.dumps(metadata or {})))
         return cid
 
+    def downloaded_record(self, camera, record):
+        for clip in self.rows("SELECT id,path,size FROM clips WHERE camera=? AND name=?", (camera, record["name"])):
+            path = Path(clip["path"])
+            expected = int(record.get("size") or 0)
+            if path.is_file() and path.stat().st_size == clip["size"] and (not expected or expected == clip["size"]):
+                return clip["id"]
+        return None
+
     def add_job(self, kind, payload):
+        if kind == "download":
+            if self.downloaded_record(payload["camera"], payload["record"]):
+                return None
+            for job in self.rows("SELECT id,payload FROM jobs WHERE kind='download' AND state IN ('queued','running','paused')"):
+                other = json.loads(job["payload"])
+                if other["camera"] == payload["camera"] and other["record"].get("path", other["record"]["name"]) == payload["record"].get("path", payload["record"]["name"]) and int(other["record"].get("size") or 0) == int(payload["record"].get("size") or 0):
+                    return job["id"]
         existing = self.rows("SELECT id FROM jobs WHERE kind=? AND payload=? AND state IN ('queued','running','paused')", (kind, json.dumps(payload, sort_keys=True)))
         if existing:
             return existing[0]["id"]

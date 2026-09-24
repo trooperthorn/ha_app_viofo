@@ -136,7 +136,7 @@ async def camera_action(request):
             raise ValueError("Select 1–500 recordings")
         records = request.app["state"].remote.get(cid, {})
         jobs = [state.add_job("download", {"camera":cid, "record":records[p]}) for p in paths]
-        return web.json_response({"queued":jobs})
+        return web.json_response({"queued":list(dict.fromkeys(j for j in jobs if j)), "already_saved":sum(j is None for j in jobs)})
     raise web.HTTPNotFound()
 
 
@@ -264,6 +264,29 @@ async def pause_downloads(request):
         if task:
             task.cancel()
     return web.json_response({"paused": len(jobs)})
+
+
+async def cancel_pending(request):
+    state = request.app["state"]
+    body = await request.json()
+    all_transfers = body.get("all_transfers") is True
+    ids = body.get("ids", [])
+    if not all_transfers and (not isinstance(ids, list) or not ids or len(ids) > 1000 or any(not isinstance(x, str) for x in ids)):
+        raise ValueError("Select 1-1000 pending jobs")
+    # Prevent automatic sync from recreating a cancelled transfer backlog.
+    for c in state.cameras:
+        state.save_camera(c["id"], {"auto_sync": False})
+    jobs = state.rows("SELECT id,kind FROM jobs WHERE state IN ('queued','running','paused')")
+    chosen = set(ids)
+    count = 0
+    for job in jobs:
+        if (all_transfers and job["kind"] in ("download", "analyze")) or (not all_transfers and job["id"] in chosen):
+            state.update_job(job["id"], state="cancelled")
+            task = request.app["running"].get(job["id"])
+            if task:
+                task.cancel()
+            count += 1
+    return web.json_response({"cancelled": count})
 
 
 async def job_action(request):
@@ -419,6 +442,10 @@ async def execute_job(app, job):
     try:
         if job["kind"] == "download":
             record = payload["record"]
+            if state.downloaded_record(payload["camera"], record):
+                state.update_job(jid, state="done", progress=1, result="")
+                state.log.info("download_skipped_existing job=%s", jid)
+                return
             suffix = Path(record["name"]).suffix.lower()
             final = state.storage / "recordings" / (jid + suffix)
             part = final.with_suffix(".part")
@@ -502,6 +529,8 @@ async def scheduler(app):
                     key = key[1] if key else "F"
                     newest[key] = max(newest.get(key,""), f["name"])
                 for f in files:
+                    if not c["auto_sync"]:
+                        break
                     if f["name"] not in known and f["name"] not in newest.values() and within_dates(f, c["sync_start"], c["sync_end"]):
                         state.add_job("download", {"camera":c["id"], "record":f})
             except Exception as exc:
@@ -552,6 +581,7 @@ def create_app(state, integration=False, background=True):
         app.router.add_post("/api/exports", export)
         app.router.add_post("/api/jobs/{jid}", job_action)
         app.router.add_get("/api/exports/{jid}", exported)
+        app.router.add_post("/api/jobs/cancel-pending", cancel_pending)
         app.router.add_post("/api/downloads/pause", pause_downloads)
         app.router.add_get("/api/live/{cid}", live)
         app.router.add_get("/api/diagnostics", diagnostics)

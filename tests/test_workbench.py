@@ -73,6 +73,25 @@ class ProtocolTests(unittest.TestCase):
 
 
 class WebTests(unittest.IsolatedAsyncioTestCase):
+    async def test_cancel_full_queue_and_duplicate_downloads(self):
+        for i in range(205):
+            self.state.add_job('download', {'camera':'a229pro','record':{'name':f'{i}.MP4','path':f'/DCIM/{i}.MP4','size':8}})
+        response=await self.client.post('/api/jobs/cancel-pending',json={'all_transfers':True},headers={'X-Viofo-Request':'1'})
+        self.assertEqual((await response.json())['cancelled'],205)
+        self.assertEqual(self.state.rows("SELECT count(*) AS n FROM jobs WHERE state='queued'")[0]['n'],0)
+        record={'name':'same.MP4','path':'/DCIM/same.MP4','size':8}
+        first=self.state.add_job('download',{'camera':'a229pro','record':record})
+        second=self.state.add_job('download',{'camera':'a229pro','record':record|{'timestamp':'changed'}})
+        self.assertEqual(first,second)
+        response=await self.client.post('/api/jobs/cancel-pending',json={'ids':[first]},headers={'X-Viofo-Request':'1'})
+        self.assertEqual((await response.json())['cancelled'],1)
+        path=self.state.storage/'recordings'/'same.mp4';path.write_bytes(b'original')
+        self.state.register(path,'a229pro','same.MP4')
+        self.assertIsNone(self.state.add_job('download',{'camera':'a229pro','record':record}))
+        self.assertIsNotNone(self.state.add_job('download',{'camera':'a229pro','record':record|{'size':9}}))
+        path.unlink()
+        self.assertIsNotNone(self.state.add_job('download',{'camera':'a229pro','record':record}))
+
     async def test_original_name_and_bulk_pause(self):
         from urllib.parse import unquote
         path=self.state.storage/'recordings'/'internal.mp4';path.write_bytes(b'original')
@@ -81,7 +100,7 @@ class WebTests(unittest.IsolatedAsyncioTestCase):
         response=await self.client.get(f'/api/clips/{cid}/download')
         self.assertIn(name,unquote(response.headers['Content-Disposition']))
         self.assertEqual(await response.read(),b'original')
-        jid=self.state.add_job('download',{'camera':'a229pro','record':{'name':name}})
+        jid=self.state.add_job('download',{'camera':'a229pro','record':{'name':'pending.MP4'}})
         response=await self.client.post('/api/downloads/pause',json={},headers={'X-Viofo-Request':'1'})
         self.assertEqual(response.status,200)
         self.assertEqual(self.state.job(jid)['state'],'paused')
