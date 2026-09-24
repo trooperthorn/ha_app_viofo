@@ -16,7 +16,9 @@
 
 ## Install on Home Assistant OS
 
-The repository is local and has not been published to GitHub. You can install it through HA OS's local app directory:
+Add `https://github.com/trooperthorn/ha_app_viofo` under **Settings → Apps → App store → Repositories**, then install **VIOFO Workbench**. Supervisor builds the app from this repository. Continue with step 3 below.
+
+Alternatively, install through HA OS's local app directory:
 
 1. Enable access to the HA OS **addons** share, for example using the official Samba share app. Copy the entire `viofo_workbench` folder into the share, producing `/addons/viofo_workbench/config.yaml` and `/addons/viofo_workbench/Dockerfile`.
 2. In Home Assistant, open **Settings → Apps → App store** (older versions call these Add-ons), use **Check for updates / Reload**, then find **VIOFO Workbench** under local apps.
@@ -71,7 +73,7 @@ node --check viofo_workbench/app/static/app.js
 python -m compileall -q viofo_workbench/app custom_components
 ```
 
-CI runs Python tests and attempts both architecture builds; the workflow is supplied but has not run remotely. Media tests require actual FFmpeg/ffprobe; do not count skipped tests as validation.
+CI runs Python tests and both architecture builds. See [GitHub Actions](https://github.com/trooperthorn/ha_app_viofo/actions) for results for each commit. Media tests require actual FFmpeg/ffprobe; do not count skipped tests as validation.
 
 ## Documents
 
