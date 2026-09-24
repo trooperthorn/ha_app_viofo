@@ -21,6 +21,11 @@ from app import media
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_embedded_sensor_rows(self):
+        points = media.parse_accelerometer('0,0.1 0.2 0.3\n1,0.2 -1 0\n2,nan 0 0\nnot a sample\n-1,0 0 1')
+        self.assertEqual(len(points),2)
+        self.assertEqual(points[1]['y'],-1)
+
     def test_private_camera_addresses_only(self):
         self.assertEqual(local_address("192.168.1.10"), "http://192.168.1.10")
         for bad in ("127.0.0.1", "http://example.com", "http://192.168.1.1@evil.com", "http://192.168.1.1/secret", "169.254.169.254", "8.8.8.8", "http://user:pass@192.168.1.1"):
@@ -79,6 +84,12 @@ class WebTests(unittest.IsolatedAsyncioTestCase):
         r=await self.client.post('/api/exports',json={});self.assertEqual(r.status,403)
         r=await self.client.get('/');self.assertEqual(r.status,200)
         self.assertIn('VIOFO Workbench',await r.text())
+
+    async def test_export_filename_cannot_inject_headers(self):
+        r=await self.post('/api/exports',{'filename':'bad\r\nHeader: value/../../secret.mp4','segments':[]})
+        jid=(await r.json())['job']
+        filename=json.loads(self.state.job(jid)['payload'])['filename']
+        self.assertNotIn('\r',filename);self.assertNotIn('\n',filename);self.assertNotIn('/',filename)
 
     async def test_ingress_rejects_direct_and_spoofed_requests(self):
         with patch.dict(os.environ,{'VIOFO_HA':'1'}):

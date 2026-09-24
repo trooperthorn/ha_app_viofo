@@ -11,11 +11,12 @@
 
 ## Verified locally
 
-**15 automated tests passed, no skips**, including real media operations using FFmpeg/ffprobe 9.0.2 on Windows. See `test-results.txt`.
+**17 automated tests passed, no skips**, including real media operations using FFmpeg/ffprobe 9.0.2 on Windows. See `test-results.txt`.
 
 Coverage includes:
 
 - Private camera-address restrictions and file-path traversal rejection.
+- Custom export filename header-injection rejection and sensor-row parsing/filtering.
 - XML file-list parsing, current-state parsing, ambiguous settings disabled.
 - Synthetic Novatek GPS atom decoding and corrupt-atom bounds.
 - UI/status service, mutation header requirement, Ingress restriction and forwarded-header spoof rejection.

@@ -10,11 +10,13 @@ from pathlib import Path
 import shutil
 import struct
 import textwrap
+import re
 import xml.etree.ElementTree as ET
 from .gps_vendor import get_gps_data
 
 FFMPEG = os.getenv("FFMPEG", "ffmpeg")
 FFPROBE = os.getenv("FFPROBE", "ffprobe")
+EXIFTOOL = os.getenv("EXIFTOOL", "exiftool")
 
 
 async def process(args, timeout=600):
@@ -43,6 +45,37 @@ async def probe(path):
     if not math.isfinite(duration) or duration <= 0:
         raise ValueError("Invalid or unfinished recording")
     return dict(duration=duration, streams=data["streams"])
+
+
+def parse_accelerometer(text):
+    points = []
+    for line in text.splitlines()[:100000]:
+        if "," not in line:
+            continue
+        timestamp, vector = line.split(",", 1)
+        try:
+            values = [float(v) for v in vector.split()]
+            seconds = float(timestamp)
+            if len(values) != 3 or not all(math.isfinite(v) for v in [seconds, *values]) or seconds < 0:
+                continue
+            points.append(dict(seconds=seconds, x=values[0], y=values[1], z=values[2]))
+        except ValueError:
+            continue
+    return sorted(points, key=lambda p:p["seconds"])
+
+
+async def embedded_telemetry(path):
+    if not shutil.which(EXIFTOOL):
+        return dict(status="decoder_unavailable", units="unknown", points=[])
+    # ExifTool's -p template is evaluated for each embedded document. It is an
+    # argument to the executable, never passed through a shell.
+    try:
+        output = await process([EXIFTOOL, "-ee", "-n", "-q", "-q", "-p", "$SampleTime,$Accelerometer", str(path)], 120)
+        points = parse_accelerometer(output.decode("utf-8", errors="replace"))
+    except ValueError:
+        return dict(status="no_supported_embedded_samples", units="unknown", points=[])
+    return dict(status="embedded_unverified" if points else "no_supported_embedded_samples",
+                source="ExifTool embedded Accelerometer", units="decoder units; calibration pending", points=points)
 
 
 def atoms(f, start, end):

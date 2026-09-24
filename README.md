@@ -7,8 +7,8 @@
 - HA OS app packaging for amd64 and aarch64, authenticated Ingress sidebar UI.
 - Two independent camera profiles, station-mode HTTP adapter, XML/HTML listings, queued downloads, scheduled sync and serialized camera access.
 - Local MP4/MOV/JPEG import, original downloads, filtering, camera pairing, browser playback, speed, zoom/pan, screenshots and sequential playback.
-- FFmpeg trimming, multiple selected segments, optional title card, one/two/three-view composition and 720p/1080p/2160p H.264/AAC exports.
-- Embedded Novatek GPS parsing, local interactive route plotting, optional OpenStreetMap background, GPX export and mph/km/h display. G-sensor CSV import/plotting; embedded G-sensor format is not validated.
+- FFmpeg trimming, multiple selected segments, optional title card, custom download filenames, one/two/three-view composition and 720p/1080p/2160p H.264/AAC exports.
+- Embedded Novatek GPS parsing, local interactive route plotting, optional OpenStreetMap background, GPX export and mph/km/h display. G-sensor CSV import/plotting plus ExifTool embedded extraction where supported; embedded units/timing are not validated.
 - Model-specific camera setting metadata from **the VIOFO Dashcam 2.2.03 package actually installed on the user's RAZR**. Writes are opt-in, enum-validated, restricted to commands reported by the camera, and checked by read-back. Ambiguous firmware-specific options remain read-only.
 - Persistent queue with pause/cancel/retry/priority, quotas, optional age retention and protected originals.
 - Debug enabled by default, rotating logs and downloadable redacted diagnostic ZIP.

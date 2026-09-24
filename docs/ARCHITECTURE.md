@@ -67,7 +67,7 @@ Pause/cancel kills media work and cleans transient output; resuming restarts a f
 
 Original files use HTTP byte ranges. Browser codec support varies, especially HEVC. A compatibility export uses H.264/AAC. Live view transcodes the documented root RTSP stream to low-rate MJPEG (5 fps, 960-pixel width, no audio). It is capped at two clients; this implementation is for inspection, not continuous multi-camera NVR recording. Per-lens RTSP routing and audio remain unverified.
 
-GPS positions derive from Novatek GPS atoms. Timestamp alignment is relative to the first valid fix and explicitly labeled, not assumed to match video time exactly. The parser bounds atom sizes, offsets and sample count and handles extended-size MP4 atoms. There is no fabricated G-sensor data: CSV import and graphs work, but embedded decoding/calibration awaits actual samples.
+GPS positions derive from Novatek GPS atoms. Timestamp alignment is relative to the first valid fix and explicitly labeled, not assumed to match video time exactly. The parser bounds atom sizes, offsets and sample count and handles extended-size MP4 atoms. There is no fabricated G-sensor data: CSV import and graphs work; an ExifTool embedded-data path extracts SampleTime/Accelerometer when available. It is labeled unvalidated, with decoder units pending calibration against actual samples.
 
 ## Interface contract
 

@@ -67,7 +67,7 @@ Windows installation: binary strings verified single/dual/three-channel playback
 | Multi-stream composition | Side-by-side or grid, up to three sources | Real three-view grid test |
 | Title card | Optional three-second card | Real FFmpeg test |
 | Export resolution | 720p / 1080p / 2160p | Tests at 720p; server capacity determines 4K throughput |
-| Output filename | Generated job filename | Custom filenames not implemented |
+| Output filename | User-selected download filename; generated internal job filename | Header-safe filename validation tested |
 | Audio in exports | First selected view, otherwise silence | Live bridge has no audio |
 | Hardware acceleration | Not implemented | Software x264, bounded thread count |
 | Live Photo | Not implemented | Official feature is iOS-only, not RAZR parity |
@@ -80,7 +80,7 @@ Windows installation: binary strings verified single/dual/three-channel playback
 | Route with playback cursor | Interactive local map + optional OSM background | First-fix timing approximation disclosed |
 | Google / Baidu provider choice | OSM alternative only | Google/Baidu integration not implemented |
 | GPX export | Implemented | Synthetic parser test |
-| G-sensor graph | Imported calibrated CSV plots | Embedded decoding unavailable, no synthetic claims |
+| G-sensor graph | CSV plots and ExifTool embedded extraction where supported | Parser fixture tested; actual embedded units/timing unverified |
 | Language selection | English UI | Localization not implemented |
 | Debug logs / support bundle | Enabled, rotated, redacted ZIP | Redaction test passed |
 | HA automation entities | Companion integration source included | HA Core install/loading untested |
@@ -92,7 +92,7 @@ Windows installation: binary strings verified single/dual/three-channel playback
 3. Validate GPS timing, three-channel grouping and G-sensor binary layout against original clips from each camera.
 4. Resolve firmware-conditioned setting enums; validate recording controls and rejection behavior while recording.
 5. Implement per-lens live preview/audio, camera photo/lock/delete/maintenance and firmware workflows only from verified protocol evidence.
-6. Add calendar markers, localized UI, custom filenames, byte-range download resumption, hardware encoding and richer editing as recorded in this matrix.
+6. Add calendar markers, localized UI, byte-range download resumption, hardware encoding and richer editing as recorded in this matrix.
 
 ## Sources
 
@@ -103,3 +103,5 @@ Windows installation: binary strings verified single/dual/three-channel playback
 - [RobXYZ/viofosync primary source](https://github.com/RobXYZ/viofosync) — MIT GPS decoder and camera protocol reference.
 - [Novatek command reference](https://github.com/nutsey/novatek-web-api-commands/tree/command-list) — general protocol reference, not proof of VIOFO model support.
 - [HA app configuration](https://developers.home-assistant.io/docs/apps/configuration/) and [Ingress requirements](https://developers.home-assistant.io/docs/apps/presentation/).
+
+Embedded accelerometer extraction uses [ExifTool timed QuickTime metadata](https://exiftool.org/TagNames/QuickTime.html) with `-ee -n -p "$SampleTime,$Accelerometer"`. Missing/unsupported samples are explicit; axis units are not assumed to be g until calibrated.

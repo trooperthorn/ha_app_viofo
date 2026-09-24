@@ -79,7 +79,7 @@ def public_status(state):
     clips = state.rows("SELECT count(*) AS count, coalesce(sum(size),0) AS bytes FROM clips")[0]
     jobs = state.rows("SELECT id,kind,state,progress,created,updated,error,result,priority FROM jobs ORDER BY priority DESC, created DESC LIMIT 200")
     return dict(version=VERSION, cameras=cameras, library=clips, jobs=jobs,
-                media_tools=dict(ffmpeg=bool(shutil.which(media.FFMPEG)), ffprobe=bool(shutil.which(media.FFPROBE))),
+                media_tools=dict(ffmpeg=bool(shutil.which(media.FFMPEG)), ffprobe=bool(shutil.which(media.FFPROBE)), exiftool=bool(shutil.which(media.EXIFTOOL))),
                 options={k:v for k,v in state.options.items() if k != "api_token"}, uptime=time.time()-state.started)
 
 
@@ -213,7 +213,9 @@ async def clip_action(request):
         # CSV import allows calibrated telemetry without pretending unknown embedded layouts work.
         if request.method == "GET":
             sidecar = state.root / (clip["id"] + "_telemetry.json")
-            return web.json_response(json.loads(sidecar.read_text()) if sidecar.exists() else {"status":"no_calibrated_gsensor_data", "points":[]})
+            embedded = state.root / (clip["id"] + "_embedded_telemetry.json")
+            source = sidecar if sidecar.exists() else embedded
+            return web.json_response(json.loads(source.read_text()) if source.exists() else {"status":"no_calibrated_gsensor_data", "points":[]})
         data = await request.json()
         rows = list(csv.DictReader(io.StringIO(data["csv"])))
         if len(rows) > 100000:
@@ -234,6 +236,9 @@ async def clip_action(request):
 
 async def export(request):
     body = await request.json()
+    if "filename" in body:
+        filename = re.sub(r"[^A-Za-z0-9_. -]", "_", str(body["filename"]))[:100].strip(" .")
+        body["filename"] = (filename.removesuffix(".mp4") or "edited-recording") + ".mp4"
     return web.json_response({"job":request.app["state"].add_job("export", body)})
 
 
@@ -266,7 +271,8 @@ async def exported(request):
     if job["state"] != "done" or not job["result"]:
         raise ValueError("Export is not ready")
     path = state.storage / "exports" / Path(job["result"]).name
-    return web.FileResponse(path, headers={"Content-Disposition":"attachment; filename=" + path.name})
+    filename = json.loads(job["payload"]).get("filename", path.name)
+    return web.FileResponse(path, headers={"Content-Disposition":'attachment; filename="' + filename + '"'})
 
 
 async def live(request):
@@ -305,7 +311,7 @@ async def diagnostics(request):
                   models=[{"id":c["id"], "model":c["model"], "configured":bool(c["address"]), "auto_sync":c["auto_sync"]} for c in state.cameras],
                   counts=state.rows("SELECT kind,state,count(*) AS count FROM jobs GROUP BY kind,state"),
                   library=state.rows("SELECT count(*) AS clips,sum(size) AS bytes FROM clips"),
-                  ffmpeg=bool(shutil.which(media.FFMPEG)), aiohttp=aiohttp.__version__, machine=platform.machine(), hardware_validation="pending")
+                  ffmpeg=bool(shutil.which(media.FFMPEG)), exiftool=bool(shutil.which(media.EXIFTOOL)), aiohttp=aiohttp.__version__, machine=platform.machine(), hardware_validation="pending")
     log = (state.root / "logs" / "debug.log").read_text(encoding="utf-8")[-250000:]
     for c in state.cameras:
         for value in (c.get("address"), c.get("name")):
@@ -376,7 +382,9 @@ async def execute_job(app, job):
             clip = state.clip(payload["clip"])
             info = await media.probe(clip["path"])
             track = await asyncio.to_thread(media.gps, clip["path"])
-            info.update(gps_points=len(track["points"]), gps_status=track["status"], gsensor_status=track["gsensor_status"])
+            telemetry = await media.embedded_telemetry(clip["path"])
+            atomic_json(state.root / (clip["id"] + "_embedded_telemetry.json"), telemetry)
+            info.update(gps_points=len(track["points"]), gps_status=track["status"], gsensor_status=telemetry["status"])
             state.execute("UPDATE clips SET metadata=? WHERE id=?", (json.dumps(info), clip["id"]))
         elif job["kind"] == "snapshot":
             state.space(10_000_000)
