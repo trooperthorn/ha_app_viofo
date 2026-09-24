@@ -1,3 +1,7 @@
+# 0.1.2
+
+- Fullscreen recording playback fills the available viewport, centers each camera view, and removes the normal 480px height limit. Preserve aspect ratio and native controls; overlay channel labels. Portrait displays stack views. Applies to every workflow using the shared recording player.
+
 # 0.1.1
 
 - Correct RTSP timeout option; retain bounded, redacted FFmpeg errors in diagnostics and display preview failures.
