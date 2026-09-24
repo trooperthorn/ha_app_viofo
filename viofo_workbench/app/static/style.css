@@ -8,3 +8,7 @@
 #videos:fullscreen .video-frame>.badge{position:absolute;left:12px;top:12px;z-index:1;pointer-events:none}
 #videos:fullscreen>img{width:100%;height:100%;object-fit:contain;min-height:0}
 @media(orientation:portrait){#videos:fullscreen{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:minmax(0,1fr)}}
+
+.day-heading{background:#1c3040;padding:12px;margin-top:22px;color:#bfe5ef}.now-playing{background:#204637;box-shadow:inset 4px 0 #53d9b1}.master-timeline{display:flex;gap:14px;align-items:center;margin:14px 0}.master-timeline input{flex:1;min-width:60px}#speedHistory{width:100%;background:#0d1620;color:#98a9bd;cursor:crosshair}details>div{margin:8px 0;overflow-wrap:anywhere}
+
+@media(min-width:1200px){#playerPanel{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(330px,1fr);gap:14px 20px}#playerPanel>.row{grid-column:1/-1}#playerPanel>#videos,#playerPanel>.master-timeline,#playerPanel>.toolbar,#playerPanel>p{grid-column:1}#playerPanel>.review-grid{grid-column:2;grid-row:2 / span 4;display:block;min-width:0}#playerPanel>.review-grid>div{margin-bottom:20px}}

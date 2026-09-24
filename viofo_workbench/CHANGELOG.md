@@ -1,3 +1,13 @@
+# 0.1.5
+
+- Recording calendar and start/end time filters with clear action.
+- Group recordings by day and matching camera views; highlight the playing group and retain per-file actions.
+- Shared seek slider and GPS speed history with playback cursor and click-to-seek.
+- Activity day headings and Clear finished history; preserve active jobs and downloadable export handles.
+- Through present day automatic sync option; clarify busy connection-profile and rejected camera-setting errors.
+- Camera-card lock icons and local filesystem/library plus last-listed camera-card usage report, separating local protection and reported card locks.
+- Diagnostics confirm 681 cancelled downloads and no queued/running work in supplied 0.1.4 snapshot. GPS line for moving recording remains unverified without that recording.
+
 # 0.1.4
 
 - Skip saved camera/name/size matches when the local file still exists at the expected size; reuse pending camera/path/size transfers even if listing metadata changes. Recheck before transfer to avoid duplicates in old queues. Remote content hashes are not available, so this is not a remote byte-for-byte comparison.

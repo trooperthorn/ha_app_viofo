@@ -78,9 +78,14 @@ def public_status(state):
         stats = dict(download_progress=round(max(running, default=0)*100,1), queued_downloads=sum(j["state"] in ("queued","running","paused") for j in camera_jobs), recordings=state.rows("SELECT count(*) AS n FROM clips WHERE camera=?", (c["id"],))[0]["n"])
         cameras.append(c | {"observation": obs | {"stale": age > 600}, "configured": bool(c["address"]), "stats":stats})
     clips = state.rows("SELECT count(*) AS count, coalesce(sum(size),0) AS bytes FROM clips")[0]
-    jobs = state.rows("SELECT id,kind,state,progress,created,updated,error,result,priority,payload FROM jobs ORDER BY priority DESC, created DESC LIMIT 200")
+    jobs = state.rows("SELECT id,kind,state,progress,created,updated,error,result,priority,payload FROM jobs ORDER BY priority DESC, created DESC LIMIT 10000")
     for job in jobs:
-        record = json.loads(job.pop("payload")).get("record", {})
+        payload = json.loads(job.pop("payload"))
+        record = payload.get("record", {})
+        if not record and payload.get("clip"):
+            matches = state.rows("SELECT name,size FROM clips WHERE id=?", (payload["clip"],))
+            if matches:
+                record = matches[0]
         job["recording_name"] = record.get("name", "")
         job["recorded_at"] = recording_time(record.get("name", ""), record.get("timestamp", ""))
         job["transfer_bytes"] = record.get("size", 0)
@@ -99,7 +104,7 @@ async def status(request):
 
 async def camera_config(request):
     if request.app["camera"].locks[request.match_info["cid"]].locked():
-        raise ValueError("Camera is busy; wait for its current operation before editing the profile")
+        raise ValueError("Connection settings were not saved because Workbench is using the camera. Pause downloads or close Live View, wait for the operation to finish, then Save again.")
     return web.json_response(request.app["state"].save_camera(request.match_info["cid"], await request.json()))
 
 
@@ -264,6 +269,29 @@ async def pause_downloads(request):
         if task:
             task.cancel()
     return web.json_response({"paused": len(jobs)})
+
+
+async def disk_report(request):
+    state = request.app["state"]
+    disk = shutil.disk_usage(state.storage)
+    local = state.rows("SELECT count(*) AS files,coalesce(sum(size),0) AS bytes,coalesce(sum(CASE WHEN protected=1 THEN size ELSE 0 END),0) AS protected_bytes,coalesce(sum(CASE WHEN category='locked' THEN size ELSE 0 END),0) AS card_locked_bytes FROM clips")[0]
+    cards = []
+    for c in state.cameras:
+        records = list(state.remote.get(c["id"], {}).values())
+        cards.append({"camera":c["name"], "listed":c["id"] in state.remote, "files":len(records),
+                      "listed_bytes":sum(r["size"] for r in records), "locked_files":sum(r["category"]=='locked' for r in records),
+                      "locked_bytes":sum(r["size"] for r in records if r["category"]=='locked'),
+                      "unknown_sizes":sum(not r["size"] for r in records)})
+    return web.json_response({"local":local,"filesystem":{"total":disk.total,"used":disk.used,"free":disk.free},"cards":cards})
+
+
+async def clear_history(request):
+    state = request.app["state"]
+    # Keep successful export/snapshot jobs: their IDs are the download handles.
+    jobs = state.rows("SELECT id FROM jobs WHERE state IN ('done','failed','cancelled') AND (result IS NULL OR result='')")
+    for job in jobs:
+        state.execute("DELETE FROM jobs WHERE id=?", (job["id"],))
+    return web.json_response({"cleared":len(jobs)})
 
 
 async def cancel_pending(request):
@@ -581,6 +609,8 @@ def create_app(state, integration=False, background=True):
         app.router.add_post("/api/exports", export)
         app.router.add_post("/api/jobs/{jid}", job_action)
         app.router.add_get("/api/exports/{jid}", exported)
+        app.router.add_get("/api/storage-report", disk_report)
+        app.router.add_post("/api/jobs/clear-history", clear_history)
         app.router.add_post("/api/jobs/cancel-pending", cancel_pending)
         app.router.add_post("/api/downloads/pause", pause_downloads)
         app.router.add_get("/api/live/{cid}", live)

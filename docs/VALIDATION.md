@@ -64,3 +64,9 @@ GPS decoding helper derived from the MIT-licensed RobXYZ/viofosync source retrie
 User reports A229 Pro infrastructure Wi-Fi persists across reboot. Supplied 0.1.0 Linux diagnostics show four downloaded recordings, FFmpeg preview exits with code 1, and one timeout termination. FFmpeg stderr was discarded, so the precise cause remains unknown. Screenshot shows OSM access-block tiles; explicit tile origin referrer is now set to address possible enclosing-page policy interference. See https://operations.osmfoundation.org/policies/tiles/. No block bypass or tile proxy is introduced.
 
 18 local tests pass, including failed-stream error capture/redaction and slot cleanup. JavaScript syntax check passes. Physical stream and HA browser map retests remain pending.
+
+## 0.1.5 review and queue update
+
+22 local tests pass. Browser verified paired F/R list row and Playing indication, shared seek at 2 seconds on both 4-second synthetic recordings, time filter exclusion and clearing. Date/time is camera-local filename time. GPS speed graph is based on decoded samples; moving-clip straight-line issue remains unverified. Supplied renamed parked clip decoded 59 samples, 4 distinct locations, all zero speed.
+
+History clearing preserves active tasks and export download handles. Card storage report sums the most recent listed media only; it is not a free-space/capacity query. Local filesystem and protected-library totals are reported separately. Card locks reflect listing/import evidence, not ongoing lock-state polling.

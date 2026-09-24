@@ -1,6 +1,6 @@
 # VIOFO Workbench for Home Assistant OS
 
-**0.1.4 — debug alpha.** A local app and companion integration for an A119 Mini 2 and A229 Pro. This is runnable software, not a UI mockup. It is **not yet a complete replacement for either official Android app or Windows Player**. See [the feature matrix](docs/CAPABILITIES.md) for exact implemented, experimental and unavailable workflows.
+**0.1.5 — debug alpha.** A local app and companion integration for an A119 Mini 2 and A229 Pro. This is runnable software, not a UI mockup. It is **not yet a complete replacement for either official Android app or Windows Player**. See [the feature matrix](docs/CAPABILITIES.md) for exact implemented, experimental and unavailable workflows.
 
 ## Included
 

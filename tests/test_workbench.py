@@ -73,6 +73,26 @@ class ProtocolTests(unittest.TestCase):
 
 
 class WebTests(unittest.IsolatedAsyncioTestCase):
+    async def test_history_storage_and_present_sync(self):
+        self.state.save_camera('a229pro',{'sync_start':'2026-09-01','sync_end':'','sync_present':True})
+        self.assertEqual(self.state.camera('a229pro')['sync_end'],'9999-12-31')
+        done=self.state.add_job('analyze',{'clip':'old'})
+        self.state.update_job(done,state='done')
+        active=self.state.add_job('analyze',{'clip':'active'})
+        export=self.state.add_job('export',{'segments':[]})
+        self.state.update_job(export,state='done',result='keep.mp4')
+        response=await self.client.post('/api/jobs/clear-history',json={},headers={'X-Viofo-Request':'1'})
+        self.assertEqual((await response.json())['cleared'],1)
+        self.assertEqual(self.state.job(active)['state'],'queued')
+        self.assertEqual(self.state.job(export)['result'],'keep.mp4')
+        path=self.state.storage/'recordings'/'locked.mp4';path.write_bytes(b'original')
+        self.state.register(path,'a229pro','locked.mp4',category='locked')
+        self.state.remote['a229pro']={'x':{'size':8,'category':'locked'}}
+        report=await (await self.client.get('/api/storage-report')).json()
+        self.assertEqual(report['local']['protected_bytes'],8)
+        self.assertEqual(report['local']['card_locked_bytes'],8)
+        self.assertEqual(report['cards'][1]['locked_bytes'],8)
+
     async def test_cancel_full_queue_and_duplicate_downloads(self):
         for i in range(205):
             self.state.add_job('download', {'camera':'a229pro','record':{'name':f'{i}.MP4','path':f'/DCIM/{i}.MP4','size':8}})

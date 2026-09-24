@@ -206,14 +206,14 @@ class CameraClient:
                     raise ValueError("Setting/value is not supported by this model and current camera response")
             response = states(await self.request(c, cmd, value))
             if response.get(cmd, -1) != 0:
-                raise ValueError("Camera rejected command; recording was not automatically interrupted")
+                raise ValueError("Camera rejected the setting. Pause recording on the dashcam, then retry Save. Recording was not automatically stopped.")
             for _ in range(3):
                 await asyncio.sleep(.4)
                 after = states(await self.request(c, 3014))
                 if after.get(cmd) == value:
                     self.state.log.info("camera_write_verified camera=%s command=%d", cid, cmd)
                     return dict(verified=True, command=cmd, value=value)
-            raise ValueError("Command sent but read-back did not confirm it; inspect camera before retrying")
+            raise ValueError("Save was not confirmed by the camera. Pause dashcam recording, inspect the current setting, then retry.")
 
     async def download(self, cid, record, target, progress):
         c = self.state.camera(cid)
