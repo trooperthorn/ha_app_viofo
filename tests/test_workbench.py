@@ -64,6 +64,30 @@ class ProtocolTests(unittest.TestCase):
 
 
 class WebTests(unittest.IsolatedAsyncioTestCase):
+    async def test_live_failure_preserves_error_and_releases_slot(self):
+        self.state.camera('a229pro')['address'] = 'http://192.168.1.20'
+        class Process:
+            returncode = 1
+            stdout = asyncio.StreamReader()
+            stderr = asyncio.StreamReader()
+            wait = AsyncMock(return_value=1)
+        proc = Process()
+        proc.stdout.feed_eof()
+        proc.stderr.feed_data(b'Cannot open rtsp://192.168.1.20/: unsupported transport\n')
+        proc.stderr.feed_eof()
+        with patch('app.server.asyncio.create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+            response = await self.client.get('/api/live/a229pro')
+            self.assertEqual(response.status, 400)
+            self.assertIn('failed to start', (await response.json())['error'])
+            self.assertIn('-timeout', spawn.call_args.args)
+            self.assertNotIn('-rw_timeout', spawn.call_args.args)
+        self.assertEqual(self.client.app['live_count'], 0)
+        response = await self.client.get('/api/diagnostics')
+        with zipfile.ZipFile(io.BytesIO(await response.read())) as bundle:
+            logs = bundle.read('debug.log').decode()
+        self.assertIn('unsupported transport', logs)
+        self.assertNotIn('192.168.1.20', logs)
+
     async def asyncSetUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.state = State(self.temp.name)

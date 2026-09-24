@@ -13,6 +13,7 @@ import secrets
 import sqlite3
 import time
 from urllib.parse import urlsplit
+from . import VERSION
 
 DEFAULTS = dict(log_level="debug", max_storage_gb=100, retention_days=30,
                 retention_enabled=False, sync_interval_seconds=300, api_token="")
@@ -98,7 +99,7 @@ class State:
             h.addFilter(Redactor(self))
             h.setFormatter(formatter)
             self.log.addHandler(h)
-        self.log.info("startup version=0.1.0 debug=%s hardware_validation=pending", self.options["log_level"])
+        self.log.info("startup version=%s debug=%s hardware_validation=pending", VERSION, self.options["log_level"])
 
     def rows(self, sql, args=()):
         return [dict(x) for x in self.db.execute(sql, args).fetchall()]

@@ -58,3 +58,9 @@ The supplied CI workflow is designed to run tests and build both architectures a
 Phone package inventory: older VIOFO 3.2.23-202603021912 (112), newer VIOFO Dashcam 2.2.03 (20260914). Camera metadata extracted from the actual newer package with `scripts/extract_command_metadata.py`; the database and APKs are not included in the deliverable.
 
 GPS decoding helper derived from the MIT-licensed RobXYZ/viofosync source retrieved during this task. Container FFmpeg comes from Debian; local FFmpeg executables were used only for testing and are not included in the source archive. Leaflet 1.9.4 is vendored with its license.
+
+## 0.1.1 field follow-up (2026-09-24)
+
+User reports A229 Pro infrastructure Wi-Fi persists across reboot. Supplied 0.1.0 Linux diagnostics show four downloaded recordings, FFmpeg preview exits with code 1, and one timeout termination. FFmpeg stderr was discarded, so the precise cause remains unknown. Screenshot shows OSM access-block tiles; explicit tile origin referrer is now set to address possible enclosing-page policy interference. See https://operations.osmfoundation.org/policies/tiles/. No block bypass or tile proxy is introduced.
+
+18 local tests pass, including failed-stream error capture/redaction and slot cleanup. JavaScript syntax check passes. Physical stream and HA browser map retests remain pending.

@@ -285,22 +285,52 @@ async def live(request):
     from urllib.parse import urlsplit
     host = urlsplit(c["address"]).hostname
     # Vendor documents the root RTSP stream. Per-lens RTSP endpoints need hardware discovery.
-    proc = await asyncio.create_subprocess_exec(media.FFMPEG, "-nostdin", "-v", "error", "-rtsp_transport", "tcp", "-rw_timeout", "10000000", "-i", f"rtsp://{host}/", "-an", "-vf", "fps=5,scale=960:-2", "-threads", "2", "-f", "mpjpeg", "-boundary_tag", "frame", "pipe:1", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
-    response = web.StreamResponse(headers={"Content-Type":"multipart/x-mixed-replace; boundary=frame"})
-    await response.prepare(request)
     request.app["live_count"] += 1
+    proc = None
+    stderr_task = None
+    async def collect_errors(stream):
+        tail = b""
+        while chunk := await stream.read(4096):
+            tail = (tail + chunk)[-8192:]
+        return tail.decode("utf-8", errors="replace")
     try:
-        while chunk := await asyncio.wait_for(proc.stdout.read(65536), 20):
+        proc = await asyncio.create_subprocess_exec(
+            media.FFMPEG, "-nostdin", "-v", "error", "-rtsp_transport", "tcp",
+            "-timeout", "10000000", "-i", f"rtsp://{host}/", "-an",
+            "-vf", "fps=5,scale=960:-2", "-threads", "2", "-f", "mpjpeg",
+            "-boundary_tag", "frame", "pipe:1",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        stderr_task = asyncio.create_task(collect_errors(proc.stderr))
+        # Do not send a successful HTTP response until FFmpeg produces output.
+        chunk = await asyncio.wait_for(proc.stdout.read(65536), 20)
+        if not chunk:
+            raise ValueError("Live preview failed to start; download diagnostics for the FFmpeg error")
+        response = web.StreamResponse(headers={"Content-Type":"multipart/x-mixed-replace; boundary=frame", "Cache-Control":"no-store"})
+        await response.prepare(request)
+        while chunk:
             await response.write(chunk)
-    except (ConnectionError, asyncio.TimeoutError):
-        pass
+            try:
+                chunk = await asyncio.wait_for(proc.stdout.read(65536), 20)
+            except asyncio.TimeoutError:
+                state.log.warning("live_preview_stalled camera=%s", c["id"])
+                break
+        return response
+    except ConnectionError:
+        return response if 'response' in locals() else web.Response(status=503)
     finally:
-        if proc.returncode is None:
-            proc.kill()
-        await proc.wait()
+        if proc is not None:
+            if proc.returncode is None:
+                proc.kill()
+            await proc.wait()
+        if stderr_task is not None:
+            error = await stderr_task
+            if error.strip():
+                # Omit endpoint URLs and addresses before diagnostics are persisted.
+                error = re.sub(r"rtsp://[^\s]+", "<camera-stream>", error)
+                error = re.sub(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "<address>", error)
+                state.log.warning("live_preview_ffmpeg camera=%s detail=%s", c["id"], error[-4096:].replace("\n", " | "))
         request.app["live_count"] -= 1
-        state.log.info("live_preview_closed camera=%s process_code=%s", c["id"], proc.returncode)
-    return response
+        state.log.info("live_preview_closed camera=%s process_code=%s", c["id"], proc.returncode if proc else "not_started")
 
 
 async def diagnostics(request):

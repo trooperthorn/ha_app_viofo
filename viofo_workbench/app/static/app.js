@@ -50,7 +50,7 @@ async function deviceAction(cid,action) {
   if(action==='sync'){const data=await api(`cameras/${cid}/sync`,'POST',{});notice(`${data.queued.length} downloads queued; newest segments deferred`);await refresh();return;}
   $('dialogTitle').textContent=c.name;
   $('dialogBody').innerHTML='<p>Contacting camera…</p>'; $('deviceDialog').showModal();
-  if(action==='live'){$('dialogBody').innerHTML=`<p>Root RTSP preview · 5 fps · no audio. Per-lens endpoints await validation.</p><img alt="Live camera preview" src="api/live/${cid}">`;return;}
+  if(action==='live'){$('dialogBody').innerHTML=`<p>Root RTSP preview · 5 fps · no audio. Per-lens endpoints await validation.</p><img id="livePreview" alt="Live camera preview" src="api/live/${cid}"><p id="liveError" role="alert" hidden>Live preview failed. Close this window and download Diagnostics for the FFmpeg error. Confirm the camera is reachable and try with downloads paused.</p>`;$('livePreview').onerror=()=>{$('livePreview').hidden=true;$('liveError').hidden=false;};return;}
   if(action==='files') {
     const list=await api(`cameras/${cid}/files`,'POST',{});
     $('dialogBody').innerHTML=`<p>${list.length} recordings on the camera</p><button id="downloadRemote">Download selected</button><div>${list.map((f,i)=>`<div class="segment"><label><input type="checkbox" data-remote="${i}"> ${esc(f.name)} · ${esc(f.category)} · ${(f.size/1024**2).toFixed(1)} MB</label></div>`).join('')}</div>`;
@@ -107,7 +107,7 @@ function drawRoute(){
 }
 $('mapTiles').onchange=()=>{
   if(!routeMap)drawRoute();
-  if($('mapTiles').checked){routeTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>'}).addTo(routeMap);}
+  if($('mapTiles').checked){routeTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,referrerPolicy:'origin',attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>'}).addTo(routeMap);}
   else if(routeTiles){routeMap.removeLayer(routeTiles);routeTiles=null;}
 };
 function updateGPS(seconds){if(!gps.length)return;const p=gps.reduce((a,b)=>Math.abs(b.seconds-seconds)<Math.abs(a.seconds-seconds)?b:a);if(routeMarker)routeMarker.setLatLng([p.lat,p.lon]);const mph=$('speedMph').checked;$('speed').textContent=(p.speed_kmh*(mph?.621371:1)).toFixed(1)+(mph?' mph':' km/h');}
